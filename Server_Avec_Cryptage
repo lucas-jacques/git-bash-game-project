@@ -1,0 +1,78 @@
+#!/bin/bash
+
+function server_sendMessage # Fonction qui permet au serveur de répondre au client
+{
+	local ADDRESS=${1}
+	local PORT=${2}
+	local MESSAGE=${3}
+
+	echo -ne ${MESSAGE} | nc -N ${ADDRESS} ${PORT}
+	while [[ $? -eq 1 ]]
+	do
+		echo -ne ${MESSAGE} | nc -N ${ADDRESS} ${PORT}
+	done
+}
+
+
+function giveRecord()
+{
+	server_sendMessage "127.0.0.1" 1666 "Le record est de "
+	server_sendMessage "127.0.0.1" 1666 $(head -n1 record.txt)
+	server_sendMessage "127.0.0.1" 1666 " et est détenu par "
+	server_sendMessage "127.0.0.1" 1666 $(tail -n1 record.txt) 
+}
+
+A=$(nc -l 1666) #initailisation de la communication
+server_sendMessage "127.0.0.1" 1666 "Connecté au serveur"
+
+variable=""
+
+until [[ ! -z "$variable" ]] #Vérification de la concordance ID et MDP de la base de donnée
+do
+
+	server_sendMessage "127.0.0.1" 1666 "Entrer votre identifiant"
+
+	server_sendMessage "127.0.0.1" 1666 "0"
+
+	CryptID=$(nc -l 1666) #Recupération de l'identifiant
+	echo $CryptID
+
+	DecryptID=$(echo $CryptID | tr 'A-Za-z' 'N-ZA-Mn-za-m') # Décryptage de l'identifiant 
+
+	Var=$DecryptID #Ajout de l'identifiant
+
+	server_sendMessage "127.0.0.1" 1666 "Entrer votre mot de passe"
+	echo $Var
+
+	CryptMDP=$(nc -l 1666) # Récupération du mot de passe
+	echo $CryptMDP
+
+	DecryptMDP=$(echo $CryptMDP | tr 'A-Za-z' 'N-ZA-Mn-za-m') #Décryptage du mot de passe
+
+	Var=$Var+$DecryptMDP #Ajout du mot de passe à la suite de l'identifiant
+	
+	echo $Var
+
+	variable=$(grep -x ^$Var$ idmdp.txt)
+
+	echo $Variable
+
+done
+server_sendMessage "127.0.0.1" 1666 "Bon mot de passe"
+server_sendMessage "127.0.0.1" 1666 "1"
+
+		#Code du jeu coté serveur 
+score=$(nc -l 1666)
+echo $score
+rec=$(head -n1 record.txt)
+if [[ $score -gt $rec ]]
+then
+	echo $score > record.txt
+	server_sendMessage "127.0.0.1" 1666 "Veuillez entrer votre Nom"
+	name=$(nc -l 1666)
+	echo $name >> record.txt
+fi
+giveRecord 
+
+
+
